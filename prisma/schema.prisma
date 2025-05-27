@@ -1,0 +1,122 @@
+// ---------- prisma/schema.prisma ----------
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  extensions        = [timescaledb]      // habilita continuous aggregates
+  relationMode      = "prisma"
+}
+
+///////////////////////
+// ENUMS            //
+///////////////////////
+
+enum EventType {
+  MESSAGE_CREATE
+  MESSAGE_DELETE
+  REACTION_ADD
+  REACTION_REMOVE
+  MEMBER_JOIN
+  MEMBER_LEAVE
+  VOICE_JOIN
+  VOICE_LEAVE
+}
+
+enum Plan {
+  STARTER
+  PRO
+  LIFETIME
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+///////////////////////
+// MODELS           //
+///////////////////////
+
+model Guild {
+  id          BigInt      @id @db.BigInt
+  name        String
+  ownerId     BigInt      @db.BigInt
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  members     GuildMember[]
+  events      RawEvent[]
+  metrics     DailyMetric[]
+  subscription Subscription?
+}
+
+model User {
+  id        BigInt        @id @db.BigInt
+  username  String
+  avatar    String?
+
+  // Relations
+  memberships GuildMember[]
+  events      RawEvent[]
+}
+
+model GuildMember {
+  id        Int       @id @default(autoincrement())
+  guildId   BigInt    @db.BigInt
+  userId    BigInt    @db.BigInt
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+
+  guild     Guild     @relation(fields: [guildId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([guildId, userId])
+}
+
+model RawEvent {
+  id        BigInt     @id @default(autoincrement()) @db.BigInt
+  guildId   BigInt     @db.BigInt
+  userId    BigInt?    @db.BigInt
+  type      EventType
+  payload   Json
+  createdAt DateTime   @default(now())
+
+  guild     Guild      @relation(fields: [guildId], references: [id])
+  user      User?      @relation(fields: [userId], references: [id])
+
+  @@index([guildId])
+  @@index([createdAt])
+}
+
+model DailyMetric {
+  id            Int       @id @default(autoincrement())
+  guildId       BigInt    @db.BigInt
+  date          DateTime
+  messages      Int
+  joins         Int
+  leaves        Int
+  activeUsers   Int
+
+  guild         Guild     @relation(fields: [guildId], references: [id])
+
+  @@unique([guildId, date])
+  @@index([date])
+}
+
+model Subscription {
+  id                   String              @id @default(cuid())
+  guildId              BigInt              @unique @db.BigInt
+  stripeSubscriptionId String              @unique
+  plan                 Plan
+  status               SubscriptionStatus
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime            @default(now())
+
+  guild                Guild               @relation(fields: [guildId], references: [id])
+}
+// ---------- fim do arquivo ----------
