@@ -1,12 +1,11 @@
-// ---------- prisma/schema.prisma ----------
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 ///////////////////////
@@ -22,6 +21,7 @@ enum EventType {
   MEMBER_LEAVE
   VOICE_JOIN
   VOICE_LEAVE
+  GUILD_JOIN
 }
 
 enum Plan {
@@ -41,36 +41,36 @@ enum SubscriptionStatus {
 ///////////////////////
 
 model Guild {
-  id        BigInt    @id @db.BigInt               @map("id")
-  name      String                                @map("name")
-  ownerId   BigInt    @db.BigInt                  @map("owner_id")
-  createdAt DateTime  @default(now())             @map("created_at")
+  id        BigInt   @id @map("id") @db.BigInt
+  name      String   @map("name")
+  ownerId   BigInt   @map("owner_id") @db.BigInt
+  createdAt DateTime @default(now()) @map("created_at")
 
-  members   GuildMember[]
-  events    RawEvent[]
-  metrics   DailyMetric[]
+  members      GuildMember[]
+  events       RawEvent[]
+  metrics      DailyMetric[]
   subscription Subscription?
 
   @@map("guild")
 }
 
 model User {
-  id       BigInt   @id @db.BigInt  @map("id")
-  username String                @map("username")
-  avatar   String?               @map("avatar")
+  id       BigInt  @id @map("id") @db.BigInt
+  username String  @map("username")
+  avatar   String? @map("avatar")
 
   memberships GuildMember[]
-  events       RawEvent[]
+  events      RawEvent[]
 
   @@map("user")
 }
 
 model GuildMember {
-  id       Int      @id @default(autoincrement()) @map("id")
-  guildId  BigInt   @db.BigInt                    @map("guild_id")
-  userId   BigInt   @db.BigInt                    @map("user_id")
-  joinedAt DateTime @default(now())               @map("joined_at")
-  leftAt   DateTime?                              @map("left_at")
+  id       Int       @id @default(autoincrement()) @map("id")
+  guildId  BigInt    @map("guild_id") @db.BigInt
+  userId   BigInt    @map("user_id") @db.BigInt
+  joinedAt DateTime  @default(now()) @map("joined_at")
+  leftAt   DateTime? @map("left_at")
 
   guild Guild @relation(fields: [guildId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
@@ -80,15 +80,15 @@ model GuildMember {
 }
 
 model RawEvent {
-  id        BigInt    @id @default(autoincrement()) @db.BigInt @map("id")
-  guildId   BigInt    @db.BigInt                    @map("guild_id")
-  userId    BigInt?   @db.BigInt                    @map("user_id")
-  type      EventType                              @map("type")
-  payload   Json                                   @map("payload")
-  createdAt DateTime   @default(now())             @map("created_at")
+  id        BigInt    @id @default(autoincrement()) @map("id") @db.BigInt
+  guildId   BigInt    @map("guild_id") @db.BigInt
+  userId    BigInt?   @map("user_id") @db.BigInt
+  type      EventType @map("type")
+  payload   Json      @map("payload")
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  guild Guild  @relation(fields: [guildId], references: [id])
-  user  User?  @relation(fields: [userId], references: [id])
+  guild Guild @relation(fields: [guildId], references: [id])
+  user  User? @relation(fields: [userId], references: [id])
 
   @@index([guildId])
   @@index([createdAt])
@@ -97,12 +97,12 @@ model RawEvent {
 
 model DailyMetric {
   id          Int      @id @default(autoincrement()) @map("id")
-  guildId     BigInt   @db.BigInt                    @map("guild_id")
-  date        DateTime                              @map("date")
-  messages    Int                                   @map("messages")
-  joins       Int                                   @map("joins")
-  leaves      Int                                   @map("leaves")
-  activeUsers Int                                   @map("active_users")
+  guildId     BigInt   @map("guild_id") @db.BigInt
+  date        DateTime @map("date")
+  messages    Int      @map("messages")
+  joins       Int      @map("joins")
+  leaves      Int      @map("leaves")
+  activeUsers Int      @map("active_users")
 
   guild Guild @relation(fields: [guildId], references: [id])
 
@@ -112,16 +112,15 @@ model DailyMetric {
 }
 
 model Subscription {
-  id                   String   @id @default(cuid())        @map("id")
-  guildId              BigInt   @unique @db.BigInt          @map("guild_id")
-  stripeSubscriptionId String   @unique                     @map("stripe_subscription_id")
-  plan                 Plan                                @map("plan")
-  status               SubscriptionStatus                  @map("status")
-  currentPeriodEnd     DateTime?                           @map("current_period_end")
-  createdAt            DateTime @default(now())            @map("created_at")
+  id                   String             @id @default(cuid()) @map("id")
+  guildId              BigInt             @unique @map("guild_id") @db.BigInt
+  stripeSubscriptionId String             @unique @map("stripe_subscription_id")
+  plan                 Plan               @map("plan")
+  status               SubscriptionStatus @map("status")
+  currentPeriodEnd     DateTime?          @map("current_period_end")
+  createdAt            DateTime           @default(now()) @map("created_at")
 
   guild Guild @relation(fields: [guildId], references: [id])
 
   @@map("subscription")
 }
-// ---------- end ----------
