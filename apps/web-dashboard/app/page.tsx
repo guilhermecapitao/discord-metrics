@@ -15,6 +15,7 @@ export default function EventsPage() {
 
       {eventsQuery.data && (
         <ul className="space-y-2">
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
           {eventsQuery.data.map(ev => (
             <li key={ev.id} className="border border-neutral-800 p-3 rounded">
               <span className="text-sm text-neutral-400">
