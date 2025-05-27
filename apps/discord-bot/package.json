@@ -6,12 +6,13 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm,cjs --out-dir dist",
+    "build": "tsup src/index.ts src/db.ts --format esm,cjs --out-dir dist",
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "discord.js": "^14.13.0",
+    "@prisma/client": "^6.8.2",
     "@trpc/client": "^10.45.0",
+    "discord.js": "^14.13.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
