@@ -64,6 +64,9 @@ importers:
       '@types/node':
         specifier: ^22.15.24
         version: 22.15.24
+      prisma:
+        specifier: ^6.8.2
+        version: 6.8.2(typescript@5.8.3)
       tsup:
         specifier: ^7.3.0
         version: 7.3.0(postcss@8.5.3)(ts-node@10.9.2(@types/node@22.15.24)(typescript@5.8.3))(typescript@5.8.3)
@@ -6813,7 +6816,6 @@ snapshots:
       '@prisma/engines': 6.8.2
     optionalDependencies:
       typescript: 5.8.3
-    optional: true
 
   prop-types@15.8.1:
     dependencies:
