@@ -1,7 +1,6 @@
 // apps/discord-bot/src/db.ts
-import pkg from "@prisma/client";
-const { PrismaClient } = pkg;
+import { PrismaClient } from '@prisma/client'
 
 export const prisma = new PrismaClient({
-  log: ["error", "warn"],
-});
+  log: ['error', 'warn']
+})

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/db.ts --format esm,cjs --out-dir dist",
+    "build": "tsup src/index.ts src/db.ts --format esm,cjs --out-dir dist --external @prisma/client",
     "start": "pnpm prisma:generate && node dist/index.js",
     "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma"
   },
