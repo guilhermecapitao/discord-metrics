@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/db.ts --format cjs --out-dir dist",
-    "start": "node dist/index.cjs"
+    "build": "tsup src/index.ts src/db.ts --format cjs --out-dir dist --external @prisma/client",
+    "start": "prisma generate --schema ../../prisma/schema.prisma && node dist/index.js"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",

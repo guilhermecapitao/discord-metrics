@@ -2,8 +2,8 @@
   "name": "discord-metrics",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "start": "pnpm --filter discord-bot start",
+    "build": "turbo run build && pnpm --filter discord-bot run build",
+    "start": "cd apps/discord-bot && pnpm run start",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
