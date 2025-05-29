@@ -6,7 +6,7 @@ import {
   Events,
   Guild,
   GuildMember,
-  Message
+  Message,
 } from 'discord.js';
 import { prisma } from './db.js';
 
@@ -62,10 +62,13 @@ async function markMemberLeft(member: GuildMember) {
   });
 }
 
+/**
+ * NOTE: payload é `any`, fazemos o cast no call.
+ */
 async function logRawEvent(
   guildId: string,
   type: 'MESSAGE_CREATE' | 'MEMBER_JOIN' | 'MEMBER_LEAVE',
-  payload: unknown,
+  payload: any,
   userId?: string
 ) {
   await prisma.rawEvent.create({
@@ -94,12 +97,15 @@ client.once(Events.ClientReady, () => {
 client.on(Events.GuildCreate, async (guild) => {
   try {
     await upsertGuild(guild);
+
+    // salva todos os membros já existentes (para popular guildMember)
     const members = await guild.members.fetch();
     for (const m of members.values()) {
       if (m.user.bot) continue;
       await upsertUser(m);
       await createMemberRow(m);
     }
+
     console.log(`➕ Registrado novo servidor: ${guild.name}`);
   } catch (err) {
     console.error('Erro GuildCreate:', err);
@@ -111,7 +117,9 @@ client.on(Events.GuildMemberAdd, async (member) => {
     await upsertGuild(member.guild);
     await upsertUser(member);
     await createMemberRow(member);
-    await logRawEvent(member.guild.id, 'MEMBER_JOIN', {}, member.id);
+
+    // aqui fazemos cast de payload vazio
+    await logRawEvent(member.guild.id, 'MEMBER_JOIN', {} as any, member.id);
   } catch (err) {
     console.error('Erro GuildMemberAdd:', err);
   }
@@ -123,7 +131,8 @@ client.on(Events.GuildMemberRemove, async (member) => {
     await upsertGuild(member.guild);
     await upsertUser(member as GuildMember);
     await markMemberLeft(member as GuildMember);
-    await logRawEvent(member.guild.id, 'MEMBER_LEAVE', {}, member.id);
+
+    await logRawEvent(member.guild.id, 'MEMBER_LEAVE', {} as any, member.id);
   } catch (err) {
     console.error('Erro GuildMemberRemove:', err);
   }
@@ -133,13 +142,16 @@ client.on(Events.MessageCreate, async (msg: Message) => {
   if (!msg.guild || msg.author.bot) return;
   try {
     const member = await msg.member!.fetch();
+
     await upsertGuild(msg.guild);
     await upsertUser(member);
     await createMemberRow(member);
+
+    // cast do objeto de payload
     await logRawEvent(
       msg.guild.id,
       'MESSAGE_CREATE',
-      { channelId: msg.channel.id, content: msg.content.slice(0, 2000) },
+      { channelId: msg.channel.id, content: msg.content.slice(0, 2000) } as any,
       msg.author.id
     );
   } catch (err) {
@@ -147,4 +159,5 @@ client.on(Events.MessageCreate, async (msg: Message) => {
   }
 });
 
-client.login(process.env.BOT_TOKEN);
+// non-null assertion para garantir que BOT_TOKEN exista
+client.login(process.env.BOT_TOKEN!);
