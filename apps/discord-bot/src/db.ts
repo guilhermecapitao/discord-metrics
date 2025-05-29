@@ -1,7 +1,6 @@
 // apps/discord-bot/src/db.ts
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const { PrismaClient } = require("@prisma/client");
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
 
 export const prisma = new PrismaClient({
   log: ["error", "warn"],
