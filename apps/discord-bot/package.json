@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts src/db.ts --format esm,cjs --out-dir dist",
-    "start": "node dist/index.js"
+    "start": "pnpm prisma:generate && node dist/index.js",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
