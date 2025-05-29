@@ -1,7 +1,8 @@
-// components/trpc-provider.tsx ------------------------------
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { trpc, clientOpts } from '@/lib/trpc';
-import { ReactNode, useState } from 'react';
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { trpc, clientOpts } from "@/lib/trpc";
+import { ReactNode, useState } from "react";
 
 export default function TrpcProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
