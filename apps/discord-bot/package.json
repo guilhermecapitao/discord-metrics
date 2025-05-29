@@ -4,6 +4,9 @@
   "type": "module",
   "version": "0.1.0",
   "main": "dist/index.js",
+  "prisma": {
+    "schema": "../../prisma/schema.prisma"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts src/db.ts --format esm,cjs --out-dir dist",
