@@ -1,8 +1,8 @@
-import { Providers } from "@/components/providers";
-import "@/globals.css";
+import Providers from "@/components/providers"
+import "@/app/globals.css";
 
 export const metadata = {
-  title: "Discord Metrics",
+  title:  "Discord Metrics",
   description: "Analytics in real-time for your Discord server",
 };
 
