@@ -1,12 +1,16 @@
 "use client";
 
-import SessionProvider from "@/components/session-provider"
-import TrpcProvider from "@/components/trpc-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState, ReactNode } from "react";
+import { trpc, clientOpts } from "@/lib/trpc";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+  const [trpcClient] = useState(() => trpc.createClient(clientOpts));
+
   return (
-    <TrpcProvider>
-      <SessionProvider>{children}</SessionProvider>
-    </TrpcProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
   );
 }
