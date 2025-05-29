@@ -1,171 +1,172 @@
-import 'dotenv/config';
+// apps/discord-bot/src/index.ts
+import "dotenv/config";
 import {
   Client,
-  GatewayIntentBits,
   Events,
+  GatewayIntentBits,
+  Guild,
   GuildMember,
   Message
-} from 'discord.js';
-import { prisma } from './db.js';
+} from "discord.js";
+import { prisma } from "./db.js";
+
+/* ───────────────────────── HELPERS ───────────────────────── */
+
+async function upsertGuild(guild: Guild) {
+  await prisma.guild.upsert({
+    where: { id: BigInt(guild.id) },
+    update: { name: guild.name, ownerId: BigInt(guild.ownerId ?? "0") },
+    create: {
+      id: BigInt(guild.id),
+      name: guild.name,
+      ownerId: BigInt(guild.ownerId ?? "0")
+    }
+  });
+}
+
+async function upsertUser(member: GuildMember) {
+  const { user } = member;
+  await prisma.user.upsert({
+    where: { id: BigInt(user.id) },
+    update: { username: user.username, avatar: user.displayAvatarURL() },
+    create: {
+      id: BigInt(user.id),
+      username: user.username,
+      avatar: user.displayAvatarURL()
+    }
+  });
+}
+
+async function createMemberRow(member: GuildMember) {
+  await prisma.guildMember.upsert({
+    where: {
+      guildId_userId: {
+        guildId: BigInt(member.guild.id),
+        userId: BigInt(member.id)
+      }
+    },
+    update: { leftAt: null }, // caso tenha saído e voltado
+    create: {
+      guildId: BigInt(member.guild.id),
+      userId: BigInt(member.id)
+    }
+  });
+}
+
+async function markMemberLeft(member: GuildMember) {
+  await prisma.guildMember.updateMany({
+    where: {
+      guildId: BigInt(member.guild.id),
+      userId: BigInt(member.id),
+      leftAt: null
+    },
+    data: { leftAt: new Date() }
+  });
+}
+
+async function logRawEvent(
+  guildId: string,
+  type: "MESSAGE_CREATE" | "MEMBER_JOIN" | "MEMBER_LEAVE",
+  payload: unknown,
+  userId?: string
+) {
+  await prisma.rawEvent.create({
+    data: {
+      guildId: BigInt(guildId),
+      userId: userId ? BigInt(userId) : null,
+      type,
+      payload
+    }
+  });
+}
+
+/* ───────────────────────── BOT CLIENT ───────────────────────── */
 
 const client = new Client({
   intents: [
-    /* guild & membro */
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
-    /* mensagens */
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ]
 });
 
-/* =============== HELPERS =============== */
-
-async function upsertGuild(id: string, name: string, ownerId?: string) {
-  await prisma.guild.upsert({
-    where: { id: BigInt(id) },
-    update: { name },
-    create: {
-      id: BigInt(id),
-      name,
-      ownerId: BigInt(ownerId ?? '0')
-    }
-  });
-}
-
-async function upsertUser(id: string, username: string, avatar?: string) {
-  await prisma.user.upsert({
-    where: { id: BigInt(id) },
-    update: { username },
-    create: {
-      id: BigInt(id),
-      username,
-      avatar
-    }
-  });
-}
-
-/* =============== EVENT HANDLERS =============== */
-
-/* Bot pronto */
+/* Bot conectado */
 client.once(Events.ClientReady, () => {
   console.log(`✅ Bot conectado como ${client.user?.tag}`);
 });
 
-/* Bot entrou num servidor */
+/* ── 1. Bot entrou em um novo servidor ─────────────────────── */
 client.on(Events.GuildCreate, async (guild) => {
   try {
-    await upsertGuild(guild.id, guild.name, guild.ownerId);
+    await upsertGuild(guild);
 
-    // marca o evento GUILD_JOIN
-    await prisma.rawEvent.create({
-      data: {
-        guildId: BigInt(guild.id),
-        type: 'GUILD_JOIN',
-        payload: { memberCount: guild.memberCount }
-      }
-    });
-    console.log(`🔔 Adicionado ao servidor ${guild.name}`);
+    // salva membros atuais para não depender só de eventos futuros
+    const members = await guild.members.fetch();
+    for (const member of members.values()) {
+      if (member.user.bot) continue;
+      await upsertUser(member);
+      await createMemberRow(member);
+    }
+
+    console.log(`➕ Registrado novo servidor: ${guild.name}`);
   } catch (err) {
-    console.error('Erro ao registrar novo servidor:', err);
+    console.error("Erro ao processar GuildCreate:", err);
   }
 });
 
-/* Novo membro entrou */
-client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
+/* ── 2. Membro entrou ──────────────────────────────────────── */
+client.on(Events.GuildMemberAdd, async (member) => {
   try {
-    await upsertUser(
-      member.id,
-      member.user.username,
-      member.user.displayAvatarURL()
-    );
-    await upsertGuild(
-      member.guild.id,
-      member.guild.name,
-      member.guild.ownerId
-    );
+    await upsertGuild(member.guild);
+    await upsertUser(member);
+    await createMemberRow(member);
 
-    // adiciona/actualiza relação membro->guild
-    await prisma.guildMember.upsert({
-      where: {
-        guildId_userId: {
-          guildId: BigInt(member.guild.id),
-          userId: BigInt(member.id)
-        }
-      },
-      update: { leftAt: null },
-      create: {
-        guildId: BigInt(member.guild.id),
-        userId: BigInt(member.id)
-      }
-    });
-
-    await prisma.rawEvent.create({
-      data: {
-        guildId: BigInt(member.guild.id),
-        userId: BigInt(member.id),
-        type: 'MEMBER_JOIN',
-        payload: {}
-      }
-    });
+    await logRawEvent(member.guild.id, "MEMBER_JOIN", {}, member.id);
   } catch (err) {
-    console.error('Erro ao registrar entrada de membro:', err);
+    console.error("Erro ao processar GuildMemberAdd:", err);
   }
 });
 
-/* Membro saiu / foi expulso */
+/* ── 3. Membro saiu ─────────────────────────────────────────── */
 client.on(Events.GuildMemberRemove, async (member) => {
-  try {
-    await prisma.guildMember.updateMany({
-      where: {
-        guildId: BigInt(member.guild.id),
-        userId: BigInt(member.id),
-        leftAt: null
-      },
-      data: { leftAt: new Date() }
-    });
+  if (member.user?.bot) return;
 
-    await prisma.rawEvent.create({
-      data: {
-        guildId: BigInt(member.guild.id),
-        userId: BigInt(member.id),
-        type: 'MEMBER_LEAVE',
-        payload: {}
-      }
-    });
+  try {
+    await upsertGuild(member.guild);
+    await upsertUser(member as GuildMember);
+    await markMemberLeft(member as GuildMember);
+
+    await logRawEvent(member.guild.id, "MEMBER_LEAVE", {}, member.id);
   } catch (err) {
-    console.error('Erro ao registrar saída de membro:', err);
+    console.error("Erro ao processar GuildMemberRemove:", err);
   }
 });
 
-/* Mensagens (já existia) */
+/* ── 4. Nova mensagem ──────────────────────────────────────── */
 client.on(Events.MessageCreate, async (msg: Message) => {
   if (!msg.guild || msg.author.bot) return;
 
   try {
-    await upsertGuild(msg.guild.id, msg.guild.name, msg.guild.ownerId);
-    await upsertUser(
-      msg.author.id,
-      msg.author.username,
-      msg.author.displayAvatarURL()
-    );
+    const member = await msg.member!.fetch();
 
-    await prisma.rawEvent.create({
-      data: {
-        guildId: BigInt(msg.guild.id),
-        userId: BigInt(msg.author.id),
-        type: 'MESSAGE_CREATE',
-        payload: {
-          channelId: msg.channel.id,
-          content: msg.content.slice(0, 2000)
-        }
-      }
-    });
+    await upsertGuild(msg.guild);
+    await upsertUser(member);
+    await createMemberRow(member); // garante que exista
+
+    await logRawEvent(
+      msg.guild.id,
+      "MESSAGE_CREATE",
+      {
+        channelId: msg.channel.id,
+        content: msg.content.slice(0, 2000)
+      },
+      msg.author.id
+    );
   } catch (err) {
-    console.error('Erro ao gravar mensagem:', err);
+    console.error("Erro ao gravar mensagem:", err);
   }
 });
 
-/* ================== */
-
+/* ── Login ─────────────────────────────────────────────────── */
 client.login(process.env.BOT_TOKEN);
