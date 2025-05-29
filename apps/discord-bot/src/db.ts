@@ -1,6 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+// apps/discord-bot/src/db.ts
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { PrismaClient } = require("@prisma/client");
 
-// Singleton para evitar múltiplas conexões em hot-reload local
 export const prisma = new PrismaClient({
-  log: ['error', 'warn']
+  log: ["error", "warn"],
 });
