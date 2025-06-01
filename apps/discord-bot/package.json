@@ -1,16 +1,17 @@
 {
   "name": "discord-bot",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "version": "0.1.0",
-  "main": "dist/index.cjs",
+  "main": "dist/index.js",
   "prisma": {
     "schema": "../../prisma/schema.prisma"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts src/db.ts --format cjs --out-dir dist --external @prisma/client",
-    "start": "prisma generate --schema ../../prisma/schema.prisma && node dist/index.js"
+    "start": "pnpm prisma:generate && node dist/index.js",
+    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
